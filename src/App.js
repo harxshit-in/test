@@ -1,0 +1,58 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+
+// Pages
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import Unauthorized from './pages/Unauthorized';
+
+// Global Styles
+import './styles/App.css';
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <div className="App">
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            
+            {/* Protected Student Routes */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <Dashboard />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Protected Admin Routes */}
+            <Route 
+              path="/admin" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminDashboard />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Catch all route */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;
