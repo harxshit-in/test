@@ -174,7 +174,7 @@ const TestOverview = () => {
               <span className="warning-icon">⚠️</span>
               <div>
                 <strong>Negative Marking Enabled</strong>
-                <p>-{exam.negativeMarks} marks will be deducted for each incorrect answer</p>
+                <p>-{exam.negativeMarks || 0.25} marks will be deducted for each incorrect answer</p>
               </div>
             </div>
           )}

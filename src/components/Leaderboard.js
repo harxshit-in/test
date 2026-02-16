@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import '../styles/Leaderboard.css';
 
@@ -10,63 +10,99 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
   const [examTitle, setExamTitle] = useState('');
 
   useEffect(() => {
-    fetchLeaderboard();
+    if (examId) {
+      fetchLeaderboard();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   const fetchLeaderboard = async () => {
     try {
+      console.log('Fetching leaderboard for exam:', examId);
+      
       // Fetch all attempts for this exam
       const attemptsQuery = query(
         collection(db, 'attempts'),
-        where('examId', '==', examId),
-        orderBy('score', 'desc'),
-        orderBy('timeTaken', 'asc'),
-        limit(100)
+        where('examId', '==', examId)
       );
 
       const snapshot = await getDocs(attemptsQuery);
-      const attempts = snapshot.docs.map(doc => ({
+      console.log('Attempts found:', snapshot.size);
+      
+      let attempts = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
 
-      // Fetch user details for each attempt
-      const leaderboardData = await Promise.all(
-        attempts.map(async (attempt, index) => {
-          try {
-            const userDoc = await getDocs(
-              query(collection(db, 'users'), where('uid', '==', attempt.userId))
-            );
-            const userData = userDoc.docs[0]?.data();
-            
-            return {
-              rank: index + 1,
-              name: userData?.name || 'Anonymous',
-              score: attempt.score,
-              totalMarks: attempt.totalMarks,
-              percentage: ((attempt.score / attempt.totalMarks) * 100).toFixed(2),
-              timeTaken: attempt.timeTaken,
-              accuracy: attempt.correctAnswers 
-                ? ((attempt.correctAnswers / attempt.totalQuestions) * 100).toFixed(1)
-                : 0,
-              attemptId: attempt.id,
-              userId: attempt.userId
-            };
-          } catch (error) {
-            return null;
-          }
-        })
-      );
+      // Sort in memory: by score (desc), then by time (asc)
+      attempts.sort((a, b) => {
+        const scoreA = a.score || 0;
+        const scoreB = b.score || 0;
+        if (scoreB !== scoreA) {
+          return scoreB - scoreA;
+        }
+        const timeA = a.timeTaken || 999999;
+        const timeB = b.timeTaken || 999999;
+        return timeA - timeB;
+      });
 
-      const validData = leaderboardData.filter(item => item !== null);
-      setLeaderboard(validData);
+      // Limit to top 100
+      attempts = attempts.slice(0, 100);
+
+      // Fetch user details for each attempt
+      const leaderboardData = [];
+      for (let i = 0; i < attempts.length; i++) {
+        const attempt = attempts[i];
+        try {
+          const userQuery = query(
+            collection(db, 'users'),
+            where('uid', '==', attempt.userId)
+          );
+          const userSnapshot = await getDocs(userQuery);
+          const userData = userSnapshot.docs[0]?.data();
+          
+          const totalMarks = attempt.totalMarks || 100;
+          const score = attempt.score || 0;
+          const totalQuestions = attempt.totalQuestions || 100;
+          const correctAnswers = attempt.correctAnswers || 0;
+          
+          leaderboardData.push({
+            rank: i + 1,
+            name: userData?.name || 'Anonymous User',
+            score: score,
+            totalMarks: totalMarks,
+            percentage: ((score / totalMarks) * 100).toFixed(2),
+            timeTaken: attempt.timeTaken || 0,
+            accuracy: totalQuestions > 0 
+              ? ((correctAnswers / totalQuestions) * 100).toFixed(1)
+              : 0,
+            attemptId: attempt.id,
+            userId: attempt.userId
+          });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          leaderboardData.push({
+            rank: i + 1,
+            name: 'Anonymous User',
+            score: attempt.score || 0,
+            totalMarks: attempt.totalMarks || 100,
+            percentage: '0',
+            timeTaken: attempt.timeTaken || 0,
+            accuracy: '0',
+            attemptId: attempt.id,
+            userId: attempt.userId
+          });
+        }
+      }
+
+      console.log('Leaderboard data processed:', leaderboardData.length);
+      setLeaderboard(leaderboardData);
 
       if (userAttempt) {
         setExamTitle(userAttempt.examTitle || 'Exam');
-        // Find user's rank
-        const rank = validData.findIndex(item => item.attemptId === userAttempt.id);
+        const rank = leaderboardData.findIndex(item => item.attemptId === userAttempt.id);
         setUserRank(rank !== -1 ? rank + 1 : null);
+        console.log('User rank:', rank + 1);
       }
 
       setLoading(false);
@@ -77,6 +113,7 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
   };
 
   const formatTime = (seconds) => {
+    if (!seconds) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -92,17 +129,18 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
   };
 
   const getPerformanceBadge = (percentage) => {
-    if (percentage >= 90) return { text: 'Outstanding', class: 'outstanding' };
-    if (percentage >= 75) return { text: 'Excellent', class: 'excellent' };
-    if (percentage >= 60) return { text: 'Good', class: 'good' };
-    if (percentage >= 50) return { text: 'Average', class: 'average' };
+    const perc = parseFloat(percentage);
+    if (perc >= 90) return { text: 'Outstanding', class: 'outstanding' };
+    if (perc >= 75) return { text: 'Excellent', class: 'excellent' };
+    if (perc >= 60) return { text: 'Good', class: 'good' };
+    if (perc >= 50) return { text: 'Average', class: 'average' };
     return { text: 'Needs Improvement', class: 'poor' };
   };
 
   if (loading) {
     return (
-      <div className="leaderboard-modal">
-        <div className="leaderboard-content">
+      <div className="leaderboard-modal" onClick={onClose}>
+        <div className="leaderboard-content" onClick={(e) => e.stopPropagation()}>
           <div className="loading">Loading leaderboard...</div>
         </div>
       </div>
@@ -119,7 +157,7 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
 
         <div className="leaderboard-exam-title">
           <p>{examTitle}</p>
-          <span>{leaderboard.length} participants</span>
+          <span>{leaderboard.length} participant{leaderboard.length !== 1 ? 's' : ''}</span>
         </div>
 
         {userRank && (
@@ -137,13 +175,15 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
             <div className="rank-stats">
               <div className="rank-stat">
                 <span className="stat-value">
-                  {userAttempt.score}/{userAttempt.totalMarks}
+                  {userAttempt.score || 0}/{userAttempt.totalMarks || 100}
                 </span>
                 <span className="stat-label">Score</span>
               </div>
               <div className="rank-stat">
                 <span className="stat-value">
-                  {((userAttempt.score / userAttempt.totalMarks) * 100).toFixed(1)}%
+                  {userAttempt.totalMarks > 0 
+                    ? ((userAttempt.score / userAttempt.totalMarks) * 100).toFixed(1)
+                    : 0}%
                 </span>
                 <span className="stat-label">Percentage</span>
               </div>
@@ -156,60 +196,60 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
         )}
 
         <div className="leaderboard-table-container">
-          <table className="leaderboard-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Name</th>
-                <th>Score</th>
-                <th>%</th>
-                <th>Accuracy</th>
-                <th>Time</th>
-                <th>Performance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((entry) => {
-                const isCurrentUser = userAttempt && entry.attemptId === userAttempt.id;
-                const rankBadge = getRankBadge(entry.rank);
-                const perfBadge = getPerformanceBadge(parseFloat(entry.percentage));
-
-                return (
-                  <tr 
-                    key={entry.attemptId} 
-                    className={`${isCurrentUser ? 'current-user' : ''} rank-${rankBadge.class}`}
-                  >
-                    <td className="rank-cell">
-                      <span className="rank-badge">
-                        <span className="rank-emoji-small">{rankBadge.emoji}</span>
-                        <span>#{entry.rank}</span>
-                      </span>
-                    </td>
-                    <td className="name-cell">
-                      {entry.name}
-                      {isCurrentUser && <span className="you-badge">You</span>}
-                    </td>
-                    <td className="score-cell">
-                      <strong>{entry.score}</strong>/{entry.totalMarks}
-                    </td>
-                    <td className="percentage-cell">{entry.percentage}%</td>
-                    <td className="accuracy-cell">{entry.accuracy}%</td>
-                    <td className="time-cell">{formatTime(entry.timeTaken)}</td>
-                    <td className="performance-cell">
-                      <span className={`perf-badge ${perfBadge.class}`}>
-                        {perfBadge.text}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-
-          {leaderboard.length === 0 && (
+          {leaderboard.length === 0 ? (
             <div className="no-data-message">
               <p>No participants yet. Be the first!</p>
             </div>
+          ) : (
+            <table className="leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Name</th>
+                  <th>Score</th>
+                  <th>%</th>
+                  <th>Accuracy</th>
+                  <th>Time</th>
+                  <th>Performance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((entry) => {
+                  const isCurrentUser = userAttempt && entry.attemptId === userAttempt.id;
+                  const rankBadge = getRankBadge(entry.rank);
+                  const perfBadge = getPerformanceBadge(entry.percentage);
+
+                  return (
+                    <tr 
+                      key={entry.attemptId} 
+                      className={`${isCurrentUser ? 'current-user' : ''} rank-${rankBadge.class}`}
+                    >
+                      <td className="rank-cell">
+                        <span className="rank-badge">
+                          <span className="rank-emoji-small">{rankBadge.emoji}</span>
+                          <span>#{entry.rank}</span>
+                        </span>
+                      </td>
+                      <td className="name-cell">
+                        {entry.name}
+                        {isCurrentUser && <span className="you-badge">You</span>}
+                      </td>
+                      <td className="score-cell">
+                        <strong>{entry.score}</strong>/{entry.totalMarks}
+                      </td>
+                      <td className="percentage-cell">{entry.percentage}%</td>
+                      <td className="accuracy-cell">{entry.accuracy}%</td>
+                      <td className="time-cell">{formatTime(entry.timeTaken)}</td>
+                      <td className="performance-cell">
+                        <span className={`perf-badge ${perfBadge.class}`}>
+                          {perfBadge.text}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           )}
         </div>
 

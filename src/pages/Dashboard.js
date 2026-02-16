@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Dashboard.css';
@@ -23,50 +23,70 @@ const Dashboard = () => {
                       'SBI PO', 'SBI Clerk', 'RRB NTPC', 'RRB Group D', 'UPSC', 'State PSC', 'Other'];
 
   useEffect(() => {
-    fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (currentUser) {
+      fetchData();
+    }
+  }, [currentUser]);
 
   const fetchData = async () => {
     try {
+      console.log('Fetching data for user:', currentUser.uid);
+      
       // Fetch all exams
       const examsSnapshot = await getDocs(collection(db, 'exams'));
       const examsData = examsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      console.log('Exams fetched:', examsData.length);
       setExams(examsData);
 
       // Fetch user's attempts
       const attemptsQuery = query(
         collection(db, 'attempts'),
-        where('userId', '==', currentUser.uid),
-        orderBy('endTime', 'desc')
+        where('userId', '==', currentUser.uid)
       );
       const attemptsSnapshot = await getDocs(attemptsQuery);
-      const attemptsData = attemptsSnapshot.docs.map(doc => ({
+      let attemptsData = attemptsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
+      
+      console.log('Attempts fetched:', attemptsData.length);
+      
+      // Sort by endTime (most recent first)
+      attemptsData.sort((a, b) => {
+        const dateA = a.endTime ? new Date(a.endTime).getTime() : 0;
+        const dateB = b.endTime ? new Date(b.endTime).getTime() : 0;
+        return dateB - dateA;
+      });
+      
       setAttempts(attemptsData);
 
       // Calculate stats
       if (attemptsData.length > 0) {
-        const totalScore = attemptsData.reduce((sum, attempt) => sum + (attempt.score || 0), 0);
-        const avgScore = attemptsData.length > 0 ? (totalScore / attemptsData.length).toFixed(2) : 0;
-        
-        const totalTime = attemptsData.reduce((sum, attempt) => {
-          if (!attempt.startTime || !attempt.endTime) return sum;
-          const start = new Date(attempt.startTime);
-          const end = new Date(attempt.endTime);
-          return sum + (end - start);
+        const totalScore = attemptsData.reduce((sum, attempt) => {
+          const score = attempt.score || 0;
+          const total = attempt.totalMarks || 100;
+          return sum + (score / total) * 100;
         }, 0);
-        const totalHours = (totalTime / (1000 * 60 * 60)).toFixed(1);
+        const avgScore = totalScore / attemptsData.length;
+        
+        const totalTimeMs = attemptsData.reduce((sum, attempt) => {
+          return sum + (attempt.timeTaken || 0);
+        }, 0);
+        const totalHours = totalTimeMs / 3600;
+
+        console.log('Stats calculated:', {
+          totalAttempts: attemptsData.length,
+          averageScore: avgScore,
+          totalTime: totalHours
+        });
 
         setStats({
           totalAttempts: attemptsData.length,
-          averageScore: parseFloat(avgScore) || 0,
-          totalTime: parseFloat(totalHours) || 0
+          averageScore: Math.round(avgScore),
+          totalTime: totalHours.toFixed(1)
         });
       } else {
         setStats({
@@ -133,7 +153,7 @@ const Dashboard = () => {
             <div className="stat-icon">📊</div>
             <h3>Average Score</h3>
             <p className="stat-value">
-              {loading ? '...' : stats.averageScore > 0 ? `${stats.averageScore}%` : '-'}
+              {loading ? '...' : stats.totalAttempts > 0 ? `${stats.averageScore}%` : '-'}
             </p>
           </div>
           
@@ -177,7 +197,7 @@ const Dashboard = () => {
               {filteredExams.map(exam => {
                 const userAttempts = attempts.filter(a => a.examId === exam.id);
                 const bestScore = userAttempts.length > 0 
-                  ? Math.max(...userAttempts.map(a => a.score))
+                  ? Math.max(...userAttempts.map(a => a.score || 0))
                   : null;
 
                 return (
@@ -209,11 +229,11 @@ const Dashboard = () => {
 
                       {exam.negativeMarking && (
                         <div className="negative-marking-badge">
-                          ⚠️ Negative Marking: -{exam.negativeMarks} per wrong answer
+                          ⚠️ Negative Marking: -{exam.negativeMarks || 0.25} per wrong answer
                         </div>
                       )}
 
-                      {bestScore !== null && (
+                      {bestScore !== null && bestScore > 0 && (
                         <div className="best-score-badge">
                           🏆 Best Score: {bestScore}/{exam.totalMarks}
                         </div>
@@ -259,16 +279,18 @@ const Dashboard = () => {
                 const exam = exams.find(e => e.id === attempt.examId);
                 if (!exam) return null;
 
-                const percentage = ((attempt.score / exam.totalMarks) * 100).toFixed(1);
-                const date = new Date(attempt.endTime).toLocaleDateString();
-                const time = new Date(attempt.endTime).toLocaleTimeString();
+                const percentage = attempt.totalMarks > 0 
+                  ? ((attempt.score / attempt.totalMarks) * 100).toFixed(1)
+                  : 0;
+                const date = attempt.endTime ? new Date(attempt.endTime).toLocaleDateString() : 'N/A';
+                const time = attempt.endTime ? new Date(attempt.endTime).toLocaleTimeString() : 'N/A';
 
                 return (
                   <div key={attempt.id} className="activity-item">
                     <div className="activity-info">
                       <h4>{exam.title}</h4>
                       <p className="activity-meta">
-                        {date} at {time} • Score: {attempt.score}/{exam.totalMarks} ({percentage}%)
+                        {date} at {time} • Score: {attempt.score}/{attempt.totalMarks} ({percentage}%)
                       </p>
                     </div>
                     <button 

@@ -17,6 +17,7 @@ const Results = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [rankData, setRankData] = useState(null);
 
   useEffect(() => {
     fetchResults();
@@ -25,7 +26,6 @@ const Results = () => {
 
   const fetchResults = async () => {
     try {
-      // Fetch attempt
       const attemptDoc = await getDoc(doc(db, 'attempts', attemptId));
       if (!attemptDoc.exists()) {
         alert('Results not found');
@@ -35,7 +35,6 @@ const Results = () => {
 
       const attemptData = { id: attemptDoc.id, ...attemptDoc.data() };
       
-      // Verify user owns this attempt
       if (attemptData.userId !== currentUser.uid) {
         alert('Unauthorized access');
         navigate('/dashboard');
@@ -44,7 +43,6 @@ const Results = () => {
 
       setAttempt(attemptData);
 
-      // Fetch questions
       const questionsQuery = query(
         collection(db, 'questions'),
         where('examId', '==', attemptData.examId)
@@ -56,11 +54,64 @@ const Results = () => {
       }));
       
       setQuestions(questionsData);
+      
+      await fetchRankData(attemptData);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching results:', error);
-      alert('Failed to load results');
-      navigate('/dashboard');
+      setLoading(false);
+    }
+  };
+
+  const fetchRankData = async (attemptData) => {
+    try {
+      const allAttemptsQuery = query(
+        collection(db, 'attempts'),
+        where('examId', '==', attemptData.examId)
+      );
+      const allAttemptsSnapshot = await getDocs(allAttemptsQuery);
+      let allAttempts = allAttemptsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      allAttempts.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (a.timeTaken || 0) - (b.timeTaken || 0);
+      });
+
+      const userRank = allAttempts.findIndex(a => a.id === attemptData.id) + 1;
+      const totalParticipants = allAttempts.length;
+
+      const topperAttempt = allAttempts[0];
+      const totalScore = allAttempts.reduce((sum, a) => sum + (a.score || 0), 0);
+      const avgScore = totalScore / allAttempts.length;
+      const avgAccuracy = allAttempts.reduce((sum, a) => {
+        const acc = ((a.correctAnswers || 0) / (a.totalQuestions || 1)) * 100;
+        return sum + acc;
+      }, 0) / allAttempts.length;
+
+      setRankData({
+        rank: userRank,
+        totalParticipants,
+        percentile: ((totalParticipants - userRank + 1) / totalParticipants) * 100,
+        topper: {
+          score: topperAttempt.score || 0,
+          accuracy: (((topperAttempt.correctAnswers || 0) / (topperAttempt.totalQuestions || 1)) * 100).toFixed(1),
+          timeTaken: topperAttempt.timeTaken || 0
+        },
+        average: {
+          score: avgScore.toFixed(1),
+          accuracy: avgAccuracy.toFixed(1)
+        },
+        userStats: {
+          score: attemptData.score || 0,
+          accuracy: (((attemptData.correctAnswers || 0) / (attemptData.totalQuestions || 1)) * 100).toFixed(1),
+          timeTaken: attemptData.timeTaken || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching rank data:', error);
     }
   };
 
@@ -90,9 +141,18 @@ const Results = () => {
     return 'incorrect';
   };
 
+  const getRankBadge = (rank) => {
+    if (rank === 1) return { emoji: '🥇', text: 'Champion', class: 'gold' };
+    if (rank === 2) return { emoji: '🥈', text: '2nd Place', class: 'silver' };
+    if (rank === 3) return { emoji: '🥉', text: '3rd Place', class: 'bronze' };
+    if (rank <= 10) return { emoji: '🏆', text: `Top 10`, class: 'top10' };
+    return { emoji: '📊', text: `Rank ${rank}`, class: 'default' };
+  };
+
   const renderOverview = () => {
     const percentage = ((attempt.score / attempt.totalMarks) * 100).toFixed(1);
     const accuracy = ((attempt.correctAnswers / attempt.totalQuestions) * 100).toFixed(1);
+    const rankBadge = rankData ? getRankBadge(rankData.rank) : null;
 
     return (
       <div className="overview-section">
@@ -110,6 +170,91 @@ const Results = () => {
             </p>
           </div>
         </div>
+
+        {rankData && (
+          <div className="rank-comparison-section">
+            <h3 className="comparison-title">📊 Your Performance Analysis</h3>
+            
+            <div className="rank-display-card">
+              <div className="rank-badge-display">
+                <span className="rank-emoji-large">{rankBadge.emoji}</span>
+                <div className="rank-info">
+                  <span className="rank-number">#{rankData.rank}</span>
+                  <span className="rank-label">{rankBadge.text}</span>
+                  <span className="rank-percentile">{rankData.percentile.toFixed(1)}th Percentile</span>
+                </div>
+              </div>
+              <div className="participants-info">
+                Out of <strong>{rankData.totalParticipants}</strong> participants
+              </div>
+            </div>
+
+            <div className="comparison-grid">
+              <div className="comparison-card topper-card">
+                <div className="card-header">
+                  <span className="card-icon">🥇</span>
+                  <h4>Top Scorer</h4>
+                </div>
+                <div className="comparison-stats">
+                  <div className="stat-row">
+                    <span>Score:</span>
+                    <strong>{rankData.topper.score}/{attempt.totalMarks}</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Accuracy:</span>
+                    <strong>{rankData.topper.accuracy}%</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Time:</span>
+                    <strong>{formatTime(rankData.topper.timeTaken)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="comparison-card you-card">
+                <div className="card-header">
+                  <span className="card-icon">👤</span>
+                  <h4>Your Score</h4>
+                </div>
+                <div className="comparison-stats">
+                  <div className="stat-row">
+                    <span>Score:</span>
+                    <strong>{rankData.userStats.score}/{attempt.totalMarks}</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Accuracy:</span>
+                    <strong>{rankData.userStats.accuracy}%</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Time:</span>
+                    <strong>{formatTime(rankData.userStats.timeTaken)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="comparison-card average-card">
+                <div className="card-header">
+                  <span className="card-icon">📊</span>
+                  <h4>Class Average</h4>
+                </div>
+                <div className="comparison-stats">
+                  <div className="stat-row">
+                    <span>Score:</span>
+                    <strong>{rankData.average.score}/{attempt.totalMarks}</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Accuracy:</span>
+                    <strong>{rankData.average.accuracy}%</strong>
+                  </div>
+                  <div className="stat-row">
+                    <span>Avg Rank:</span>
+                    <strong>#{Math.ceil(rankData.totalParticipants / 2)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="stats-grid-results">
           <div className="stat-card-result">
@@ -352,7 +497,6 @@ const Results = () => {
         </button>
       </div>
 
-      {/* Leaderboard Modal */}
       {showLeaderboard && (
         <Leaderboard
           examId={attempt.examId}
