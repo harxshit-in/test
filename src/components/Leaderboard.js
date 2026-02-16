@@ -11,6 +11,7 @@ const Leaderboard = ({ examId, userAttempt, onClose }) => {
 
   useEffect(() => {
     fetchLeaderboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   const fetchLeaderboard = async () => {

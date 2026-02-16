@@ -14,10 +14,10 @@ const TestOverview = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userAttempts, setUserAttempts] = useState([]);
-  const [showInstructions, setShowInstructions] = useState(true);
 
   useEffect(() => {
     fetchExamDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId]);
 
   const fetchExamDetails = async () => {
