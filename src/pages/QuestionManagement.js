@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
+import BulkUpload from '../components/BulkUpload';
 import '../styles/QuestionManagement.css';
 
 const QuestionManagement = () => {
@@ -25,6 +26,7 @@ const QuestionManagement = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -296,9 +298,17 @@ const QuestionManagement = () => {
           <h1>{exam.title}</h1>
           <p>{questions.length} questions • {exam.totalMarks} marks • {exam.durationMinutes} minutes</p>
         </div>
-        <button className="btn-primary" onClick={openCreateModal}>
-          + Add Question
-        </button>
+        <div className="header-actions">
+          <button 
+            className="btn-secondary" 
+            onClick={() => setShowBulkUpload(true)}
+          >
+            📁 Bulk Upload JSON
+          </button>
+          <button className="btn-primary" onClick={openCreateModal}>
+            + Add Question
+          </button>
+        </div>
       </div>
 
       {questions.length === 0 ? (
@@ -541,6 +551,22 @@ const QuestionManagement = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <div className="modal-overlay" onClick={() => setShowBulkUpload(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <BulkUpload
+              examId={examId}
+              onSuccess={() => {
+                setShowBulkUpload(false);
+                fetchExamAndQuestions();
+              }}
+              onClose={() => setShowBulkUpload(false)}
+            />
           </div>
         </div>
       )}

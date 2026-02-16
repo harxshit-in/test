@@ -20,6 +20,12 @@
   opacity: 0.8;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 /* Questions List */
 .questions-list {
   display: flex;

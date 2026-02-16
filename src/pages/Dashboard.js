@@ -52,10 +52,11 @@ const Dashboard = () => {
 
       // Calculate stats
       if (attemptsData.length > 0) {
-        const totalScore = attemptsData.reduce((sum, attempt) => sum + attempt.score, 0);
-        const avgScore = (totalScore / attemptsData.length).toFixed(2);
+        const totalScore = attemptsData.reduce((sum, attempt) => sum + (attempt.score || 0), 0);
+        const avgScore = attemptsData.length > 0 ? (totalScore / attemptsData.length).toFixed(2) : 0;
         
         const totalTime = attemptsData.reduce((sum, attempt) => {
+          if (!attempt.startTime || !attempt.endTime) return sum;
           const start = new Date(attempt.startTime);
           const end = new Date(attempt.endTime);
           return sum + (end - start);
@@ -64,8 +65,14 @@ const Dashboard = () => {
 
         setStats({
           totalAttempts: attemptsData.length,
-          averageScore: avgScore,
-          totalTime: totalHours
+          averageScore: parseFloat(avgScore) || 0,
+          totalTime: parseFloat(totalHours) || 0
+        });
+      } else {
+        setStats({
+          totalAttempts: 0,
+          averageScore: 0,
+          totalTime: 0
         });
       }
 
@@ -101,7 +108,7 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          <h2>TestBook Platform</h2>
+          <h2>ExamPrepBook</h2>
         </div>
         <div className="nav-user">
           <span>Welcome, {currentUser?.displayName || currentUser?.email}</span>
@@ -125,7 +132,9 @@ const Dashboard = () => {
           <div className="stat-card">
             <div className="stat-icon">📊</div>
             <h3>Average Score</h3>
-            <p className="stat-value">{loading ? '...' : stats.averageScore || '-'}</p>
+            <p className="stat-value">
+              {loading ? '...' : stats.averageScore > 0 ? `${stats.averageScore}%` : '-'}
+            </p>
           </div>
           
           <div className="stat-card">

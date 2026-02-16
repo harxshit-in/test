@@ -8,8 +8,7 @@ const Signup = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
-    role: 'student'
+    confirmPassword: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,14 +44,11 @@ const Signup = () => {
     try {
       setError('');
       setLoading(true);
-      await signup(formData.email, formData.password, formData.name, formData.role);
+      // Always create as student - admins must be manually created in Firebase
+      await signup(formData.email, formData.password, formData.name, 'student');
       
-      // Navigate based on role
-      if (formData.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
+      // Navigate to student dashboard
+      navigate('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -149,20 +145,6 @@ const Signup = () => {
               placeholder="Confirm your password"
               disabled={loading}
             />
-          </div>
-          
-          <div className="form-group">
-            <label htmlFor="role">Account Type</label>
-            <select
-              id="role"
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              disabled={loading}
-            >
-              <option value="student">Student</option>
-              <option value="admin">Admin</option>
-            </select>
           </div>
           
           <button type="submit" className="btn-primary" disabled={loading}>

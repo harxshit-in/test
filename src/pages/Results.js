@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+import Leaderboard from '../components/Leaderboard';
 import '../styles/Results.css';
 
 const Results = () => {
@@ -15,6 +16,7 @@ const Results = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   useEffect(() => {
     fetchResults();
@@ -342,10 +344,22 @@ const Results = () => {
         <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
           Go to Dashboard
         </button>
+        <button className="btn-secondary" onClick={() => setShowLeaderboard(true)}>
+          🏆 View Leaderboard
+        </button>
         <button className="btn-primary" onClick={() => navigate(`/test/${attempt.examId}`)}>
           Reattempt Test
         </button>
       </div>
+
+      {/* Leaderboard Modal */}
+      {showLeaderboard && (
+        <Leaderboard
+          examId={attempt.examId}
+          userAttempt={attempt}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
     </div>
   );
 };

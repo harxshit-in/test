@@ -68,7 +68,7 @@ const AdminDashboard = () => {
     <div className="dashboard-container">
       <nav className="dashboard-nav">
         <div className="nav-brand">
-          <h2>TestBook Platform - Admin</h2>
+          <h2>ExamPrepBook - Admin</h2>
         </div>
         <div className="nav-user">
           <span>Admin: {currentUser?.displayName || currentUser?.email}</span>

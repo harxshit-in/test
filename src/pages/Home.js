@@ -7,7 +7,7 @@ const Home = () => {
     <div className="home-container">
       <nav className="home-nav">
         <div className="nav-brand">
-          <h2>TestBook Platform</h2>
+          <h2>ExamPrepBook</h2>
         </div>
         <div className="nav-links">
           <Link to="/login" className="nav-link">Login</Link>
@@ -59,7 +59,7 @@ const Home = () => {
       </div>
       
       <div className="features-section">
-        <h2 className="section-title">Why Choose TestBook Platform?</h2>
+        <h2 className="section-title">Why Choose ExamPrepBook?</h2>
         <div className="features-grid">
           <div className="feature-card">
             <div className="feature-icon">⏱️</div>
@@ -88,7 +88,7 @@ const Home = () => {
       </div>
       
       <footer className="home-footer">
-        <p>&copy; 2026 TestBook Platform. All rights reserved.</p>
+        <p>&copy; 2026 ExamPrepBook. All rights reserved.</p>
       </footer>
     </div>
   );
