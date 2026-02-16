@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ExamManagement from './pages/ExamManagement';
 import QuestionManagement from './pages/QuestionManagement';
+import TestEngine from './pages/TestEngine';
+import Results from './pages/Results';
 import Unauthorized from './pages/Unauthorized';
 
 // Global Styles
@@ -34,6 +36,22 @@ function App() {
               element={
                 <PrivateRoute requiredRole="student">
                   <Dashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/test/:examId" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <TestEngine />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/results/:attemptId" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <Results />
                 </PrivateRoute>
               } 
             />
