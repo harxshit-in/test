@@ -166,6 +166,22 @@ const ExamManagement = () => {
     setShowModal(true);
   };
 
+  const handleCopyLink = (examId) => {
+    const link = `${window.location.origin}/test-overview/${examId}`;
+    navigator.clipboard.writeText(link).then(() => {
+      alert('✅ Test link copied to clipboard!\n\nShare this link with students:\n' + link);
+    }).catch(() => {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = link;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      alert('✅ Test link copied to clipboard!\n\nShare this link with students:\n' + link);
+    });
+  };
+
   if (loading) {
     return <div className="loading">Loading exams...</div>;
   }
@@ -237,6 +253,13 @@ const ExamManagement = () => {
                   Manage Questions
                 </button>
                 <div className="action-buttons">
+                  <button 
+                    className="btn-icon share-btn"
+                    onClick={() => handleCopyLink(exam.id)}
+                    title="Copy shareable link"
+                  >
+                    🔗
+                  </button>
                   <button 
                     className="btn-icon"
                     onClick={() => handleEdit(exam)}

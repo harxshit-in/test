@@ -169,6 +169,14 @@
   background: #fff5f5;
 }
 
+.btn-icon.share-btn {
+  color: #48bb78;
+}
+
+.btn-icon.share-btn:hover {
+  background: #f0fff4;
+}
+
 .btn-sm {
   padding: 8px 16px;
   font-size: 14px;

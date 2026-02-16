@@ -93,7 +93,7 @@ const Dashboard = () => {
   };
 
   const handleStartTest = (examId) => {
-    navigate(`/test/${examId}`);
+    navigate(`/test-overview/${examId}`);
   };
 
   const handleViewResult = (attemptId) => {
@@ -232,7 +232,7 @@ const Dashboard = () => {
                         onClick={() => handleStartTest(exam.id)}
                         disabled={!exam.totalQuestions || exam.totalQuestions === 0}
                       >
-                        {userAttempts.length > 0 ? 'Reattempt Test' : 'Start Test'}
+                        {userAttempts.length > 0 ? '📖 View & Reattempt' : '📖 View Details'}
                       </button>
                       {!exam.totalQuestions || exam.totalQuestions === 0 ? (
                         <span className="no-questions-note">No questions yet</span>

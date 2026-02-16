@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ExamManagement from './pages/ExamManagement';
 import QuestionManagement from './pages/QuestionManagement';
+import TestOverview from './pages/TestOverview';
 import TestEngine from './pages/TestEngine';
 import Results from './pages/Results';
 import Unauthorized from './pages/Unauthorized';
@@ -36,6 +37,14 @@ function App() {
               element={
                 <PrivateRoute requiredRole="student">
                   <Dashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/test-overview/:examId" 
+              element={
+                <PrivateRoute requiredRole="student">
+                  <TestOverview />
                 </PrivateRoute>
               } 
             />
