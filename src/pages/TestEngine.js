@@ -28,7 +28,8 @@ const TestEngine = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [examId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (exam && !testStartTime) {
@@ -37,6 +38,7 @@ const TestEngine = () => {
       setTimeRemaining(exam.durationMinutes * 60);
       startTimer();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam]);
 
   const fetchExamAndQuestions = async () => {

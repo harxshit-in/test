@@ -21,7 +21,6 @@ import '../styles/QuestionManagement.css';
 const QuestionManagement = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
   
   const [exam, setExam] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -57,7 +56,8 @@ const QuestionManagement = () => {
 
   useEffect(() => {
     fetchExamAndQuestions();
-  }, [examId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchExamAndQuestions = async () => {
     try {
