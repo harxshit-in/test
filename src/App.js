@@ -9,6 +9,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ExamManagement from './pages/ExamManagement';
+import QuestionManagement from './pages/QuestionManagement';
 import Unauthorized from './pages/Unauthorized';
 
 // Global Styles
@@ -42,6 +44,22 @@ function App() {
               element={
                 <PrivateRoute requiredRole="admin">
                   <AdminDashboard />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/exams" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <ExamManagement />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/admin/exams/:examId/questions" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <QuestionManagement />
                 </PrivateRoute>
               } 
             />
