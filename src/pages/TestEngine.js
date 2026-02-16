@@ -21,25 +21,73 @@ const TestEngine = () => {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
+  // Concurrent user limit states
+  const [concurrentUsers, setConcurrentUsers] = useState(0);
+  const [canStartTest, setCanStartTest] = useState(false);
+  const [checkingCapacity, setCheckingCapacity] = useState(true);
+  
   const timerRef = useRef(null);
+  const MAX_CONCURRENT_USERS = 30;
 
   useEffect(() => {
-    fetchExamAndQuestions();
+    checkConcurrentUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId]);
+
+  useEffect(() => {
+    if (canStartTest && !exam) {
+      fetchExamAndQuestions();
+    }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [canStartTest]);
 
-  useEffect(() => {
-    if (exam && !testStartTime) {
-      const startTime = new Date().toISOString();
-      setTestStartTime(startTime);
-      setTimeRemaining(exam.durationMinutes * 60);
-      startTimer();
+  const checkConcurrentUsers = async () => {
+    try {
+      const now = new Date();
+      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+      // Fetch recent attempts for this exam
+      const recentAttemptsQuery = query(
+        collection(db, 'attempts'),
+        where('examId', '==', examId)
+      );
+      
+      const snapshot = await getDocs(recentAttemptsQuery);
+      
+      // Count active users (started in last 5 min and not finished, or finished very recently)
+      const activeCount = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        const startTime = data.startTime ? new Date(data.startTime) : null;
+        const endTime = data.endTime ? new Date(data.endTime) : null;
+        
+        // Active if: started in last 5 min and (not ended OR ended in last 2 minutes)
+        if (startTime && startTime > fiveMinutesAgo) {
+          if (!endTime || endTime > new Date(now.getTime() - 2 * 60 * 1000)) {
+            return true;
+          }
+        }
+        return false;
+      }).length;
+
+      console.log('Active concurrent users:', activeCount, 'Max allowed:', MAX_CONCURRENT_USERS);
+      setConcurrentUsers(activeCount);
+      
+      if (activeCount >= MAX_CONCURRENT_USERS) {
+        setCanStartTest(false);
+      } else {
+        setCanStartTest(true);
+      }
+      setCheckingCapacity(false);
+    } catch (error) {
+      console.error('Error checking concurrent users:', error);
+      // Allow test on error to avoid blocking legitimate users
+      setCanStartTest(true);
+      setCheckingCapacity(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exam]);
+  };
 
   const fetchExamAndQuestions = async () => {
     try {
@@ -78,6 +126,16 @@ const TestEngine = () => {
       navigate('/dashboard');
     }
   };
+
+  useEffect(() => {
+    if (exam && !testStartTime) {
+      const startTime = new Date().toISOString();
+      setTestStartTime(startTime);
+      setTimeRemaining(exam.durationMinutes * 60);
+      startTimer();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam]);
 
   const startTimer = () => {
     timerRef.current = setInterval(() => {
@@ -244,6 +302,46 @@ const TestEngine = () => {
       handleSubmit();
     }
   };
+
+  // Checking capacity screen
+  if (checkingCapacity) {
+    return (
+      <div className="test-wait-screen">
+        <div className="wait-content">
+          <div className="spinner"></div>
+          <h2>Checking Test Availability...</h2>
+          <p>Please wait while we check the server capacity.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Capacity full screen
+  if (!canStartTest) {
+    return (
+      <div className="test-wait-screen">
+        <div className="wait-content">
+          <div className="wait-icon">⏳</div>
+          <h2>Test Capacity Reached</h2>
+          <p>Currently <strong>{concurrentUsers}</strong> students are taking this test.</p>
+          <p>Maximum concurrent users allowed: <strong>{MAX_CONCURRENT_USERS}</strong></p>
+          <div className="wait-message">
+            <p>⏱️ Please wait a few minutes and try again.</p>
+            <p>Tests typically take 30-60 minutes to complete.</p>
+            <p>Some slots should open up soon as students finish their tests.</p>
+          </div>
+          <div className="wait-actions">
+            <button className="btn-primary" onClick={checkConcurrentUsers}>
+              🔄 Check Again
+            </button>
+            <button className="btn-secondary" onClick={() => navigate('/dashboard')}>
+              ← Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return <div className="loading">Loading exam...</div>;

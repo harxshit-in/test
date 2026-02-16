@@ -491,3 +491,139 @@
     width: 100%;
   }
 }
+
+/* Wait Screen for Concurrent Users */
+.test-wait-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.wait-content {
+  background: white;
+  border-radius: 16px;
+  padding: 60px 40px;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.wait-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  animation: pulse 2s infinite;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 6px solid #f3f4f6;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.wait-content h2 {
+  color: #2d3748;
+  font-size: 28px;
+  margin: 0 0 16px 0;
+}
+
+.wait-content > p {
+  color: #4a5568;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.wait-content strong {
+  color: #667eea;
+  font-weight: 700;
+}
+
+.wait-message {
+  background: #f7fafc;
+  border-left: 4px solid #fbbf24;
+  padding: 20px;
+  margin: 32px 0;
+  border-radius: 8px;
+}
+
+.wait-message p {
+  color: #4a5568;
+  font-size: 15px;
+  margin: 8px 0;
+}
+
+.wait-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-top: 32px;
+}
+
+.wait-actions button {
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.wait-actions .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.wait-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.wait-actions .btn-secondary {
+  background: white;
+  color: #4a5568;
+  border: 2px solid #e2e8f0;
+}
+
+.wait-actions .btn-secondary:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+}
+
+@media (max-width: 768px) {
+  .wait-content {
+    padding: 40px 24px;
+  }
+
+  .wait-icon {
+    font-size: 60px;
+  }
+
+  .wait-content h2 {
+    font-size: 24px;
+  }
+
+  .wait-actions {
+    flex-direction: column;
+  }
+
+  .wait-actions button {
+    width: 100%;
+  }
+}
